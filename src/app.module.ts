@@ -11,6 +11,7 @@ import { AuthModule } from './core/modules/auth/auth.module';
 import { UsersModule } from './core/modules/users/users.module';
 import { JwtAuthGuard } from './core/modules/auth/guards/jwt-auth.guard';
 import { DevicesModule } from './core/modules/devices/devices.module';
+import { WorkflowsModule } from './core/modules/workflows/workflows.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DevicesModule } from './core/modules/devices/devices.module';
     AuthModule,
     UsersModule,
     DevicesModule,
+    WorkflowsModule,
   ],
   providers: [
     {

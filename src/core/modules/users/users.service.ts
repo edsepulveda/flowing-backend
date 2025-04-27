@@ -127,6 +127,23 @@ export class UsersService {
     return this.findOneById(id);
   }
 
+  async deleteAccount(id: string) {
+    this.logger.log(
+      `Performing delete account operation for user with id ${id}`,
+    );
+    const result = await this.userRepository.deleteUserAccount(id);
+
+    if (!result) {
+      throw HttpCatchException.notFound('User not found');
+    }
+
+    this.logger.debug(`User with id ${id} deleted successfully`);
+    return {
+      success: true,
+      message: 'User account deleted successfully',
+    };
+  }
+
   async disableUser(id: string): Promise<Users> {
     await this.userRepository.setUserActiveStatus(id, false);
     return this.findOneById(id);

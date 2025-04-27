@@ -7,6 +7,7 @@ import {
   HttpStatus,
   UseGuards,
   Put,
+  Delete,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -129,5 +130,18 @@ export class UsersController {
   @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
   async verifyEmail(@Param('id') id: string): Promise<UserResponseDto> {
     return this.usersService.setEmailVerified(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete user account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User account deleted successfully',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'User not found' })
+  async deleteAccount(
+    @Param('id') id: string,
+  ): Promise<{ message: string; success: boolean }> {
+    return this.usersService.deleteAccount(id);
   }
 }

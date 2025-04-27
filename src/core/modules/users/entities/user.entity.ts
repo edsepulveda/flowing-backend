@@ -12,6 +12,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { TrustedDevice } from '../../devices/entities/device.entity';
+import { Workflow } from '../../workflows/entities/workflow.entity';
 
 export enum AccountType {
   Google = 'google',
@@ -56,6 +57,9 @@ export class Users {
 
   @OneToMany(() => TrustedDevice, device => device.user)
   devices: TrustedDevice[];
+
+  @OneToMany(() => Workflow, workflow => workflow.user)
+  workflows: Workflow[];
 
   @CreateDateColumn()
   createdAt: Date;

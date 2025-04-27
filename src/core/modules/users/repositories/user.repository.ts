@@ -86,6 +86,16 @@ export class UserRepository extends BaseRepository<Users> {
   }
 
 
+  async deleteUserAccount(id: string) {
+    try {
+      const result = await this.deleteBy({ id });
+      return result;
+    } catch (error) {
+      this.logger.error(`Error deleting user account: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
   async setEmailVerified(userId: string): Promise<boolean> {
     try {
       const result = await this.update(userId, { isEmailVerified: true });
