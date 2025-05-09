@@ -16,11 +16,22 @@ export class WorkflowsService {
     this.logger.setContext(WorkflowsService.name);
   }
 
-  async createWorkflow(createWorkflowDto: CreateWorkflowDto) {
+  async createWorkflow(createWorkflowDto: CreateWorkflowDto, userId: string) {
     return await this.workflowRepository.create({
       ...createWorkflowDto,
       status: Status.DRAFT,
+      userId: userId,
     });
+  }
+
+  async getWorkflowById(id: string, userId: string) {
+    const workflow = await this.workflowRepository.findOneBy({ id, userId });
+
+    if (!workflow) {
+      throw HttpCatchException.notFound(`Workflow with the id ${id} not found`);
+    }
+
+    return workflow;
   }
 
   async listWorkflowsByUserId(userId: string, pagination: Pagination) {
@@ -41,13 +52,28 @@ export class WorkflowsService {
     return workflows;
   }
 
-  async updateWorkflow(id: string, updateWorkflowDto: UpdateWorkflowDto) {
-    const workflow = await this.workflowRepository.findOneById(id);
+  async updateWorkflow(
+    id: string,
+    userId: string,
+    updateWorkflowDto: UpdateWorkflowDto,
+  ) {
+    const workflow = await this.workflowRepository.findOneBy({
+      id,
+      userId,
+    });
 
     if (!workflow) {
-      this.logger.error(`Workflow with the id ${id} doesnt exists`);
+      this.logger.error(
+        `Workflow for the user ${userId} with the id ${id} doesnt exists`,
+      );
       throw HttpCatchException.notFound(
         `Workflow with the id ${id} doesnt exists`,
+      );
+    }
+
+    if (workflow.status === 'PUBLISHED') {
+      throw HttpCatchException.forbidden(
+        `You cannot edit a workflow that has been published`,
       );
     }
 

@@ -18,7 +18,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { EmailLoginUserDto } from './dto/login.dto';
 import { IExtendedRequest } from 'src/common/interfaces/extended-request.interface';
 import { JwtRefreshGuard } from './guards/refresh-token.guard';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { Response } from 'express';
 
 @Controller('auth')
@@ -39,10 +38,9 @@ export class AuthController {
   })
   async register(
     @Body() registerDto: RegisterUserDto,
-    @Req() req: IExtendedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TokenResponseDto> {
-    return this.authService.register(registerDto, req, res);
+    return this.authService.register(registerDto, res);
   }
 
   @Public()
@@ -60,10 +58,9 @@ export class AuthController {
   })
   async login(
     @Body() loginDto: EmailLoginUserDto,
-    @Req() req: IExtendedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TokenResponseDto> {
-    return this.authService.login(loginDto, req, res);
+    return this.authService.login(loginDto, res);
   }
 
   @Public()
@@ -80,11 +77,25 @@ export class AuthController {
     description: 'Invalid refresh token',
   })
   async refreshToken(
-    @Body() refreshTokenDto: RefreshTokenDto,
     @Req() req: IExtendedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TokenResponseDto> {
-    return this.authService.refreshToken(refreshTokenDto, req, res);
+    return this.authService.refreshToken(req, res);
+  }
+
+  @Post('logout')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Logout and invalidate tokens' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Logout successful',
+  })
+  async logout(
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{ success: boolean }> {
+    await this.authService.logout(res);
+    return { success: true };
   }
 
   @Get('validate')

@@ -19,9 +19,10 @@ export class DevicesService {
   async saveDeviceInfo(
     userId: string,
     deviceId: string,
-    refreshToken: string,
-    requestDetails: RequestDetails,
-    existingDeviceId: string,
+    refreshToken: string | null,
+    requestDetails?: RequestDetails,
+    existingDeviceId?: string,
+    isTrusted: boolean = true,
   ): Promise<TrustedDevice> {
     try {
       let device: TrustedDevice;
@@ -41,6 +42,7 @@ export class DevicesService {
             deviceId,
             refreshToken,
             requestDetails,
+            isTrusted,
           );
         }
       } else {
@@ -55,11 +57,17 @@ export class DevicesService {
             deviceId,
             refreshToken,
             requestDetails,
+            isTrusted,
           );
         }
       }
 
-      return this.updateExistingDevice(device, refreshToken, requestDetails);
+      return this.updateExistingDevice(
+        device,
+        refreshToken,
+        requestDetails,
+        isTrusted,
+      );
     } catch (error) {
       this.logger.error(
         `Error saving device info: ${error.message}`,
@@ -72,11 +80,16 @@ export class DevicesService {
   private async createNewDevice(
     userId: string,
     deviceId: string,
-    refreshToken: string,
+    refreshToken: string | null,
     requestDetails?: RequestDetails,
+    isTrusted: boolean = true,
   ): Promise<TrustedDevice> {
-    const decodedToken: any = this.jwtService.decode(refreshToken);
-    const refreshTokenExpiresAt = new Date(decodedToken.exp * 1000);
+    let refreshTokenExpiresAt = null;
+
+    if (refreshToken) {
+      const decodedToken: any = this.jwtService.decode(refreshToken);
+      refreshTokenExpiresAt = new Date(decodedToken.exp * 1000);
+    }
 
     return this.trustedDeviceRepository.create({
       userId,
@@ -87,24 +100,29 @@ export class DevicesService {
       browser: requestDetails?.browser,
       os: requestDetails?.os,
       ip: requestDetails?.ip,
-      isTrusted: true,
+      isTrusted: isTrusted,
     });
   }
 
   private async updateExistingDevice(
     device: TrustedDevice,
-    refreshToken: string,
+    refreshToken: string | null,
     requestDetails?: RequestDetails,
+    isTrusted: boolean = device.isTrusted,
   ): Promise<TrustedDevice> {
-    const decodedToken: any = this.jwtService.decode(refreshToken);
-    const refreshTokenExpiresAt = new Date(decodedToken.exp * 1000);
-
     const updatedDevice = {
       ...device,
-      refreshToken,
-      refreshTokenExpiresAt,
       lastUsedAt: new Date(),
+      isTrusted: isTrusted,
     };
+
+    if (refreshToken) {
+      const decodedToken: any = this.jwtService.decode(refreshToken);
+      const refreshTokenExpiresAt = new Date(decodedToken.exp * 1000);
+
+      updatedDevice.refreshToken = refreshToken;
+      updatedDevice.refreshTokenExpiresAt = refreshTokenExpiresAt;
+    }
 
     if (requestDetails) {
       if (requestDetails.browser)
@@ -134,11 +152,8 @@ export class DevicesService {
     }
   }
 
-  async revokeAllDevicesExcept(
-    userId: string
-  ): Promise<void> {
-
-    const currentDevice = await this.getLastUsedDevice(userId)
+  async revokeAllDevicesExcept(userId: string): Promise<void> {
+    const currentDevice = await this.getLastUsedDevice(userId);
 
     return await this.trustedDeviceRepository.shallowRevokeDevices(
       userId,
@@ -211,18 +226,23 @@ export class DevicesService {
     }
   }
 
-  async findDeviceById(userId: string, deviceId: string): Promise<TrustedDevice> {
+  async findDeviceById(
+    userId: string,
+    deviceId: string,
+  ): Promise<TrustedDevice> {
     try {
       const device = await this.trustedDeviceRepository.findOneBy({
-        id: deviceId,
-        userId
-      })
+        userId,
+        deviceId: deviceId,
+      });
 
       if (!device) {
-        throw HttpCatchException.notFound(`Device for the user ${userId} and Device id ${deviceId} not found`)
+        throw HttpCatchException.notFound(
+          `Device for the user ${userId} and Device id ${deviceId} not found`,
+        );
       }
 
-      return device
+      return device;
     } catch (error) {
       this.logger.error(
         `Error finding device by ID: ${error.message}`,
@@ -231,5 +251,4 @@ export class DevicesService {
       throw error;
     }
   }
-
 }

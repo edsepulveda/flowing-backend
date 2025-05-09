@@ -12,8 +12,7 @@ import { HttpCatchException } from 'src/common/exceptions/http.exception';
 import { EmailLoginUserDto } from './dto/login.dto';
 import { DevicesService } from '../devices/devices.service';
 import { IExtendedRequest } from 'src/common/interfaces/extended-request.interface';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import type { Response } from 'express'
+import type { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +28,6 @@ export class AuthService {
 
   async register(
     registerDto: RegisterUserDto,
-    req: IExtendedRequest,
     res: Response,
   ): Promise<TokenResponseDto> {
     const user = await this.userService.create({
@@ -38,7 +36,7 @@ export class AuthService {
       isEmailVerified: true,
     });
 
-    const tokens = await this.generateTokensAndSaveDevice(user, req, res);
+    const tokens = await this.generateTokensAndSaveDevice(user, res);
 
     return tokens;
   }
@@ -66,7 +64,6 @@ export class AuthService {
 
   async login(
     loginDto: EmailLoginUserDto,
-    req: IExtendedRequest,
     res: Response,
   ): Promise<TokenResponseDto> {
     const user = await this.userService.findOneByEmailWithPassword(
@@ -93,8 +90,7 @@ export class AuthService {
       throw HttpCatchException.unauthorized('Invalid credentials');
     }
 
-    const tokens = await this.generateTokensAndSaveDevice(user, req, res);
-
+    const tokens = await this.generateTokensAndSaveDevice(user, res);
     await this.userService.update(user.id, { lastLoginAt: new Date() });
 
     this.logger.debug(`User ${loginDto.email} logged in successfully`);
@@ -103,29 +99,22 @@ export class AuthService {
 
   async generateTokensAndSaveDevice(
     user: Users,
-    req: IExtendedRequest,
     res: Response,
-    existingDeviceId?: string,
   ): Promise<TokenResponseDto> {
     const tokens = await this.generateTokens(user);
 
-    if (!req.cookies.deviceId) {
-      res.cookie('deviceId', req.deviceId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
-    }
-
-    await this.devicesService.saveDeviceInfo(
-      user.id,
-      req.deviceId,
+    this.setRefreshTokenCookie(
+      res,
       tokens.refreshToken,
-      req.requestDetails,
-      existingDeviceId,
+      tokens.refreshExpiresIn,
     );
 
-    return tokens;
+    return {
+      accessToken: tokens.accessToken,
+      expiresIn: tokens.expiresIn,
+      tokenType: 'Bearer',
+      refreshExpiresIn: tokens.refreshExpiresIn,
+    };
   }
 
   async generateTokens(user: Users): Promise<TokenResponseDto> {
@@ -152,36 +141,40 @@ export class AuthService {
 
     const expiresIn = this.configService.get<number>(
       'JWT_EXPIRATION_SECONDS',
-      3600,
+      900,
+    );
+
+    const refreshExpiresIn = this.configService.get<number>(
+      'JWT_REFRESH_EXPIRATION_SECONDS',
+      604800,
     );
 
     return {
       accessToken,
       refreshToken,
       expiresIn,
+      refreshExpiresIn,
       tokenType: 'Bearer',
     };
   }
 
   async refreshToken(
-    refreshTokenDto: RefreshTokenDto,
     req: IExtendedRequest,
     res: Response,
   ): Promise<TokenResponseDto> {
-    const device = await this.devicesService.validateRefreshToken(
-      refreshTokenDto.refreshToken,
-    );
+    const refreshToken = req.cookies.refreshToken;
 
-    if (!device) {
-      throw HttpCatchException.unauthorized('Invalid refresh token');
+    if (!refreshToken) {
+      throw HttpCatchException.unauthorized('Refresh token not found');
     }
 
-    const user = await this.userService.findOneById(device.userId);
+    const user = await this.userService.findOneById(req.user.id);
     if (!user || !user.isActive) {
+      this.clearRefreshTokenCookie(res);
       throw HttpCatchException.unauthorized('User not found or inactive');
     }
 
-    const tokens = await this.generateTokensAndSaveDevice(user, req, res, device.id);
+    const tokens = await this.generateTokens(user);
 
     return tokens;
   }
@@ -200,5 +193,34 @@ export class AuthService {
   async getUserFromToken(token: string): Promise<Users> {
     const payload = await this.verifyToken(token);
     return this.userService.findOneById(payload.sub);
+  }
+
+  private setRefreshTokenCookie(
+    res: Response,
+    token: string,
+    expiresIn: number,
+  ) {
+    res.cookie('refreshToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: expiresIn * 1000,
+      path: '/api/auth/refresh',
+    });
+  }
+
+  private clearRefreshTokenCookie(res: Response) {
+    res.cookie('refreshToken', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 0,
+      path: '/api/auth/refresh',
+    });
+  }
+
+  async logout(res: Response): Promise<void> {
+    this.clearRefreshTokenCookie(res);
+    res.clearCookie('deviceId');
   }
 }

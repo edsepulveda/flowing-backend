@@ -12,7 +12,7 @@ export class WorkflowRepository extends BaseRepository<Workflow> {
     @InjectRepository(Workflow)
     private readonly workflowRepository: Repository<Workflow>,
   ) {
-    super(Workflow, workflowRepository, 'trusted_devices');
+    super(Workflow, workflowRepository, 'workflow');
   }
 
   async listWorkflowsByUserId(
@@ -22,12 +22,18 @@ export class WorkflowRepository extends BaseRepository<Workflow> {
     try {
       const [workflows, total] = await this.workflowRepository.findAndCount({
         where: { userId },
-        select: ['id', 'name', 'description', 'createdAt', 'updatedAt'],
+        select: [
+          'id',
+          'name',
+          'description',
+          'createdAt',
+          'updatedAt',
+          'status',
+        ],
         order: {
           createdAt: 'DESC',
         },
         take: pagination.limit,
-        skip: pagination.offset,
       });
 
       return {

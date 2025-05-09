@@ -6,6 +6,7 @@ import {
   MemoryHealthIndicator,
 } from '@nestjs/terminus';
 import { AppLogger } from '../logger/logger.service';
+import { Public } from '../modules/auth/decorators/public-route';
 
 
 
@@ -22,6 +23,7 @@ export class HealthController {
 
 
   @Get()
+  @Public()
   @HealthCheck()
   async check() {
     this.logger.debug("Checking Health Status...")

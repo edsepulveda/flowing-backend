@@ -6,7 +6,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppLogger } from './core/logger/logger.service';
 import * as cookieParser from 'cookie-parser';
 
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -17,10 +16,12 @@ async function bootstrap() {
   const logger = app.get(AppLogger);
   logger.setContext('Bootstrap');
   app.useLogger(logger);
-  app.use(cookieParser())
+  app.use(cookieParser());
 
-  app.enableCors();
-  app.setGlobalPrefix('api')
+  app.enableCors({
+    origin: '*',
+  });
+  app.setGlobalPrefix('api');
 
   app.enableVersioning({
     type: VersioningType.URI,
@@ -54,7 +55,7 @@ async function bootstrap() {
   logger.log(`Application is running on port ${port} in ${environment} mode`);
 }
 
-bootstrap().catch(err => {
+bootstrap().catch((err) => {
   console.error('Error starting application:', err);
   process.exit(1);
 });

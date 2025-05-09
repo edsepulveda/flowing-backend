@@ -2,7 +2,6 @@ import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator'
 import { Status } from '../entities/workflow.entity'
 
 export class CreateWorkflowDto {
-
   @IsString()
   @IsNotEmpty()
   name: string
@@ -14,4 +13,8 @@ export class CreateWorkflowDto {
   @IsEnum(Status)
   @IsOptional()
   status?: Status
+
+  @IsString()
+  @IsOptional()
+  metadata?: Record<string, any>
 }
