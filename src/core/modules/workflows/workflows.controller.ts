@@ -14,6 +14,9 @@ import { GetUser } from '../auth/decorators/get-user';
 import { PaginationParams } from 'src/shared/decorators/pagination.decorator';
 import { Pagination } from 'src/shared/interfaces/pagination.interface';
 import { Users } from '../users/entities/user.entity';
+import { ApiOperation } from '@nestjs/swagger';
+import { WorkflowFilterParams } from 'src/shared/decorators/workflow-filters.decorator';
+import { WorkflowFilter } from 'src/common/interfaces/workflow.interface';
 
 @Controller('workflows')
 export class WorkflowsController {
@@ -25,11 +28,17 @@ export class WorkflowsController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'List workflows with filtering and pagination' })
   findWorkflowsByUserId(
     @GetUser() user: Users,
-    @PaginationParams() pagination: Pagination,
+    @PaginationParams({ page: 1, size: 10 }) pagination: Pagination,
+    @WorkflowFilterParams() filter: WorkflowFilter,
   ) {
-    return this.workflowsService.listWorkflowsByUserId(user.id, pagination);
+    return this.workflowsService.listWorkflowsByUserId(
+      user.id,
+      pagination,
+      filter,
+    );
   }
 
   @Get(':id')

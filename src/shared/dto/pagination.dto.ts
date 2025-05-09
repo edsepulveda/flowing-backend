@@ -3,4 +3,7 @@ export type PaginatedResource<T> = {
   items: T[];
   page: number;
   size: number;
+  totalPages: number;
+  hasNextPage: boolean
+  hasPreviousPage: boolean
 };

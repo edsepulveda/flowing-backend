@@ -6,6 +6,7 @@ import { AppLogger } from 'src/core/logger/logger.service';
 import { HttpCatchException } from 'src/common/exceptions/http.exception';
 import { Pagination } from 'src/shared/interfaces/pagination.interface';
 import { Status } from './entities/workflow.entity';
+import { WorkflowFilter } from 'src/common/interfaces/workflow.interface';
 
 @Injectable()
 export class WorkflowsService {
@@ -34,10 +35,11 @@ export class WorkflowsService {
     return workflow;
   }
 
-  async listWorkflowsByUserId(userId: string, pagination: Pagination) {
-    const workflows = await this.workflowRepository.listWorkflowsByUserId(
+  async listWorkflowsByUserId(userId: string, pagination: Pagination, filter: WorkflowFilter) {
+    const workflows = await this.workflowRepository.findUserWorkflows(
       userId,
       pagination,
+      filter
     );
 
     if (!workflows) {
